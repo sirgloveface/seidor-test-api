@@ -5,8 +5,6 @@ import http from 'http'
 import axios from "axios"
 import redis from "redis"
 
-// create and connect redis client to local instance.
-
 class Weather extends EventEmitter {
   constructor() {
     super()
@@ -30,8 +28,8 @@ class Weather extends EventEmitter {
         this._client.get(dataRedisKey,async (err, data) => {
              let response = await this.getData(JSON.parse(data))
              response = response.map((i) => {
-               return { "time" : i.time , "temperature" : i.temperature, "timezone": i.timezone }
-              // return { "time" : i.currently.time , "temperature" : i.currently.temperature, "timezone": i.timezone }
+              // return { "time" : i.time , "temperature" : i.temperature, "timezone": i.timezone }
+               return { "time" : i.currently.time , "temperature" : i.currently.temperature, "timezone": i.timezone }
              })
              res.send(response)
       })}
@@ -44,12 +42,14 @@ class Weather extends EventEmitter {
   async getWeatherBySocket() {
     console.log(`${this._logger.green("[ getWeatherBySocket controller ]")}`)
     try {
-      const dataRedisKey = 'latitude:coord:'
+      console.log(Math.random(0, 1))
+     if (Math.random(0, 1) < 0.1) throw new Error('9999')
+     const dataRedisKey = 'latitude:coord:'
      this._client.get(dataRedisKey, async (err, data) => {
            let response = await this.getData(JSON.parse(data))
            response = response.map((i) => {
-            return { "time" : i.time , "temperature" : i.temperature, "timezone": i.timezone }
-            //return { "time" : i.currently.time , "temperature" : i.currently.temperature, "timezone": i.timezone }
+            //return { "time" : i.time , "temperature" : i.temperature, "timezone": i.timezone }
+            return { "time" : i.currently.time , "temperature" : i.currently.temperature, "timezone": i.timezone }
            })
            this.emit('messagecb',JSON.stringify(response))
            return false
@@ -57,6 +57,9 @@ class Weather extends EventEmitter {
     }
     catch(e) {
       console.log(`${this._logger.red('[ Disconnect ] ')} result: ${e}`)
+      if(e === "Error: 9999") {
+       await this.saveRedis(e);
+      }
       return {}
     }
 }
@@ -76,6 +79,10 @@ async checkLatitudeData(latitude) {
     }
 }
 
+async saveRedis(message) {
+  const dataRedisKey = 'api.errors'
+  client.setex(dataRedisKey, 3600, JSON.stringify(message))
+}
 async callRest(options) {
     return await new Promise((resolve, reject) => {
       options.httpAgent = new http.Agent({
