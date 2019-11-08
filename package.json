@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "export NODE_ENV=local && nodemon --exec babel-node --inspect src/index.js",
-    "start-dev": "export NODE_ENV=develop && nodemon --exec babel-node src/index.js",
+    "start": "export NODE_ENV=local  REDIS_PORT=6379 && nodemon --exec babel-node --inspect src/index.js",
+    "start-dev": "export NODE_ENV=develop REDIS_PORT=6379 && nodemon --exec babel-node src/index.js",
     "debug": "export NODE_ENV=local && nodemon --exec babel-node --inspect src/index.js"
   },
   "author": "",
