@@ -4,6 +4,7 @@ import chalk from "chalk";
 import http from 'http'
 import axios from "axios"
 import redis from "redis"
+import moment from 'moment'
 
 class Weather extends EventEmitter {
   constructor() {
@@ -29,7 +30,7 @@ class Weather extends EventEmitter {
              let response = await this.getData(JSON.parse(data))
              response = response.map((i) => {
               // return { "time" : i.time , "temperature" : i.temperature, "timezone": i.timezone }
-               return { "time" : i.currently.time , "temperature" : i.currently.temperature, "timezone": i.timezone }
+               return { "time" :  moment.unix(i.currently.time).format("DD-MM-YYYY h:mm:ss"), "temperature" : i.currently.temperature, "timezone": i.timezone }
              })
              res.send(response)
       })}
@@ -42,14 +43,14 @@ class Weather extends EventEmitter {
   async getWeatherBySocket() {
     console.log(`${this._logger.green("[ getWeatherBySocket controller ]")}`)
     try {
-      console.log(Math.random(0, 1))
-     if (Math.random(0, 1) < 0.1) throw new Error('9999')
+     // Simulacion 10 intentos
+     if (Math.random(0, 1) < 0.1) throw new Error('How unfortunate! The API Request Failed')
      const dataRedisKey = 'latitude:coord:'
      this._client.get(dataRedisKey, async (err, data) => {
            let response = await this.getData(JSON.parse(data))
            response = response.map((i) => {
             //return { "time" : i.time , "temperature" : i.temperature, "timezone": i.timezone }
-            return { "time" : i.currently.time , "temperature" : i.currently.temperature, "timezone": i.timezone }
+            return { "time" : moment.unix(i.currently.time).format("DD-MM-YYYY h:mm:ss") , "temperature" : i.currently.temperature, "timezone": i.timezone }
            })
            this.emit('messagecb',JSON.stringify(response))
            return false
@@ -57,7 +58,8 @@ class Weather extends EventEmitter {
     }
     catch(e) {
       console.log(`${this._logger.red('[ Disconnect ] ')} result: ${e}`)
-      if(e === "Error: 9999") {
+      if(e == "Error: How unfortunate! The API Request Failed") {
+        console.log("error");
        await this.saveRedis(e);
       }
       return {}
@@ -67,21 +69,30 @@ async checkLatitudeData(latitude) {
    console.log(`${this._logger.green('[ Init checkLatitudeData ] ')} latitude: ${latitude}`)
     const options = {
       method: "GET",
-      url: `https://api.darksky.net/forecast/388618f7e4a94de1cc1058ef30f6e167/${latitude}`
+      url: `https://api.darksky.net/forecast/388618f7e4a94de1cc1058ef30f6e167/${latitude}?units=si&&lang=es`
     }
     try {
       return await this.callRest(options)    
     }
     catch(e) {
       console.log(`${this._logger.red('[ Error checkLatitudeData ] ')} -> : ${e}`)
-      return { "time" : "i.currently.time" , "temperature" : "i.currently.temperature", "timezone":" i.timezone" }
-      
+     // return { "time" : "i.currently.time" , "temperature" : "i.currently.temperature", "timezone":" i.timezone" }
+      return {}
     }
 }
 
 async saveRedis(message) {
-  const dataRedisKey = 'api.errors'
-  client.setex(dataRedisKey, 3600, JSON.stringify(message))
+  const dataRedisKeyHash = 'api.errors'
+  return new Promise((resolve, reject) => {
+    redisClient.hmset(dataRedisKeyHash, {[speciesName] : JSON.stringify(message)},
+     (err, response) => {
+      if(err) {
+        reject(err)
+      } else {
+        resolve(response)
+      }
+    })
+  })
 }
 async callRest(options) {
     return await new Promise((resolve, reject) => {
@@ -92,7 +103,7 @@ async callRest(options) {
         .then(response => {
           let respuesta = response.data;
           if (respuesta.Error == null) {
-          //  console.log(`${this._logger.green('[ callRest ] ')} result: ${JSON.stringify(respuesta)}`)
+           console.log(`${this._logger.green('[ callRest ] ')} result: ${JSON.stringify(respuesta)}`)
             return resolve(respuesta)
           } else {
             console.log(`${this._logger.red('[ callRest ] ')} result: 400`)
